@@ -8,6 +8,7 @@ import os
 from typing import Dict, List, Any, Optional
 from function_pool import FunctionPool
 from test_case import TestCase, TestStep
+import constants as const
 
 
 class TestRunner:
@@ -38,17 +39,17 @@ class TestRunner:
     def _parse_test_case(self, case_data: Dict) -> TestCase:
         """Parse a single test case from JSON data"""
         steps = []
-        for step_data in case_data.get("steps", []):
+        for step_data in case_data.get(const.STEPS, []):
             step = TestStep(
-                name=step_data["name"],
-                function=step_data["function"],
-                input_args=step_data.get("input_args", []),
-                input_kwargs=step_data.get("input_kwargs", {}),
-                expected_result=step_data.get("expected_result"),
-                assertion_type=step_data.get("assertion_type", "equals"),
-                retry_count=step_data.get("retry_count", 0),
-                retry_delay=step_data.get("retry_delay", 1.0),
-                description=step_data.get("description"),
+                name=step_data[const.NAME],
+                function=step_data[const.FUNCTION],
+                input_args=step_data.get(const.INPUT_ARGS, []),
+                input_kwargs=step_data.get(const.INPUT_KWARGS, {}),
+                expected_result=step_data.get(const.EXPECTED),
+                assertion_type=step_data.get(const.ASSERTION, "equals"),
+                retry_count=step_data.get(const.RETRY_COUNT, 0),
+                retry_delay=step_data.get(const.RETRY_DELAY, 1.0),
+                description=step_data.get(const.DESCRIPTION),
             )
             steps.append(step)
 
@@ -75,15 +76,15 @@ class TestRunner:
     def _parse_step(self, step_data: Dict) -> TestStep:
         """Parse a single test step from JSON data"""
         return TestStep(
-            name=step_data["name"],
-            function=step_data["function"],
-            input_args=step_data.get("input_args", []),
-            input_kwargs=step_data.get("input_kwargs", {}),
-            expected_result=step_data.get("expected_result"),
-            assertion_type=step_data.get("assertion_type", "equals"),
-            retry_count=step_data.get("retry_count", 0),
-            retry_delay=step_data.get("retry_delay", 1.0),
-            description=step_data.get("description"),
+            name=step_data[const.NAME],
+            function=step_data[const.FUNCTION],
+            input_args=step_data.get(const.INPUT_ARGS, []),
+            input_kwargs=step_data.get(const.INPUT_KWARGS, {}),
+            expected_result=step_data.get(const.EXPECTED),
+            assertion_type=step_data.get(const.ASSERTION, "equals"),
+            retry_count=step_data.get(const.RETRY_COUNT, 0),
+            retry_delay=step_data.get(const.RETRY_DELAY, 1.0),
+            description=step_data.get(const.DESCRIPTION),
         )
 
     def execute_test_case(self, test_case: TestCase) -> Dict[str, Any]:
@@ -96,11 +97,11 @@ class TestRunner:
         self.variables = test_case.variables.copy() if test_case.variables else {}
 
         result = {
-            "name": test_case.name,
-            "status": "PASSED",
-            "steps": [],
-            "error": None,
-            "execution_time": 0,
+            const.NAME: test_case.name,
+            const.STATUS: "PASSED",
+            const.STEPS: [],
+            const.ERROR: None,
+            const.EXECUTION_TIME: 0,
         }
 
         start_time = time.time()
@@ -112,8 +113,10 @@ class TestRunner:
                 for step in test_case.setup_steps:
                     step_result = self._execute_step(step)
                     if not step_result["passed"]:
-                        result["status"] = "FAILED"
-                        result["error"] = f"Setup step failed: {step_result['error']}"
+                        result[const.STATUS] = "FAILED"
+                        result[const.ERROR] = (
+                            f"Setup step failed: {step_result[const.ERROR]}"
+                        )
                         return result
 
             # Execute main test steps
@@ -122,7 +125,7 @@ class TestRunner:
                 result["steps"].append(step_result)
 
                 if not step_result["passed"]:
-                    result["status"] = "FAILED"
+                    result[const.STATUS] = "FAILED"
                     result["error"] = step_result["error"]
                     break
 
@@ -137,7 +140,7 @@ class TestRunner:
                         )
 
         except Exception as e:
-            result["status"] = "ERROR"
+            result[const.STATUS] = "ERROR"
             result["error"] = str(e)
 
         finally:

@@ -4,6 +4,7 @@ JSON-based pytest test framework
 
 from function_pool import FunctionPool
 from test_runner import TestRunner, TestCase, TestStep
+import constants as const
 
 __all__ = ["FunctionPool", "TestRunner", "TestCase", "TestStep"]
 
@@ -79,7 +80,7 @@ class TestJSONFramework:
         result = test_runner.execute_test_case(test_case)
 
         # Verify the test passed
-        assert result["status"] == "PASSED"
+        assert result[const.STATUS] == "PASSED"
         assert len(result["steps"]) == 3
         assert all(step["passed"] for step in result["steps"])
 
@@ -109,7 +110,7 @@ class TestJSONFramework:
         result = test_runner.execute_test_case(test_case)
 
         # This should pass because divide by zero returns None
-        assert result["status"] == "PASSED"
+        assert result[const.STATUS] == "PASSED"
 
     def test_variable_substitution(self, test_runner):
         """Test variable substitution in test steps"""
