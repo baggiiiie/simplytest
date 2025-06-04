@@ -4,7 +4,7 @@ Test runner for executing JSON-defined test cases
 
 import json
 import time
-from pathlib import Path
+import os
 from typing import Dict, List, Any, Optional
 from function_pool import FunctionPool
 from test_case import TestCase, TestStep
@@ -17,6 +17,11 @@ class TestRunner:
         self.function_pool = function_pool or FunctionPool()
         self.test_results = []
         self.variables = {}
+        self.ctx = {}
+        self._load_env_var()
+
+    def _load_env_var(self):
+        self.ctx["env_var"] = os.environ
 
     def load_test_cases_from_json(self, json_path: str) -> List[TestCase]:
         """Load test cases from JSON file"""
