@@ -16,7 +16,7 @@ class TestStep:
     )
     retry_count: int = 0
     retry_delay: float = 1.0
-    description: Optional[str] = None
+    description: str = ""
 
 
 @dataclass

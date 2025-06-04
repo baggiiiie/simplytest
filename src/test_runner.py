@@ -5,6 +5,7 @@ Test runner for executing JSON-defined test cases
 import json
 import time
 import os
+import allure
 from typing import Dict, List, Any, Optional
 from function_pool import FunctionPool
 from test_case import TestCase, TestStep
@@ -111,13 +112,14 @@ class TestRunner:
             if test_case.setup_steps:
                 print("Executing setup steps...")
                 for step in test_case.setup_steps:
-                    step_result = self._execute_step(step)
-                    if not step_result["passed"]:
-                        result[const.STATUS] = "FAILED"
-                        result[const.ERROR] = (
-                            f"Setup step failed: {step_result[const.ERROR]}"
-                        )
-                        return result
+                    with allure.step(step.description):
+                        step_result = self._execute_step(step)
+                        if not step_result["passed"]:
+                            result[const.STATUS] = "FAILED"
+                            result[const.ERROR] = (
+                                f"Setup step failed: {step_result[const.ERROR]}"
+                            )
+                            return result
 
             # Execute main test steps
             for step in test_case.steps:
