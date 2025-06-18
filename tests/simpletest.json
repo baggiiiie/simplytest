@@ -1,59 +1,114 @@
 {
-  "test_cases": [
-    {
-      "name": "String Operations",
-      "description": "Test string manipulation functions",
-      "setup_steps": [
+    "test_cases": [
         {
-          "name": "setup_test_string",
-          "function": "str",
-          "input_args": [
-            "  Hello World  "
-          ],
-          "expected_result": "  Hello World  ",
-          "assertion_type": "equals"
-        }
-      ],
-      "steps": [
-        {
-          "name": "test_upper",
-          "function": "upper",
-          "input_args": [
-            "hello"
-          ],
-          "expected_result": "HELLO",
-          "assertion_type": "equals"
+            "name": "test case 1",
+            "description": "Test string manipulation functions",
+            "setup_steps": [
+                {
+                    "name": "setup_test_string",
+                    "function": "str",
+                    "input_args": [
+                        "  Hello World  "
+                    ],
+                    "expected_result": "  Hello World  ",
+                    "assertion_type": "equals"
+                }
+            ],
+            "steps": [
+                {
+                    "name": "test_upper",
+                    "function": "upper",
+                    "input_args": [
+                        "hello"
+                    ],
+                    "expected_result": "HELLO",
+                    "assertion_type": "equals"
+                },
+                {
+                    "name": "test_lower",
+                    "function": "lower",
+                    "input_args": [
+                        "WORLD"
+                    ],
+                    "expected_result": "world",
+                    "assertion_type": "equals"
+                },
+                {
+                    "name": "test_strip",
+                    "function": "strip",
+                    "input_args": [
+                        "  test  "
+                    ],
+                    "expected_result": "test",
+                    "assertion_type": "equals"
+                }
+            ],
+            "teardown_steps": [
+                {
+                    "name": "cleanup",
+                    "function": "str",
+                    "input_args": [
+                        "cleanup complete"
+                    ],
+                    "expected_result": "cleanup complete",
+                    "assertion_type": "equals"
+                }
+            ]
         },
         {
-          "name": "test_lower",
-          "function": "lower",
-          "input_args": [
-            "WORLD"
-          ],
-          "expected_result": "world",
-          "assertion_type": "equals"
-        },
-        {
-          "name": "test_strip",
-          "function": "strip",
-          "input_args": [
-            "  test  "
-          ],
-          "expected_result": "test",
-          "assertion_type": "equals"
+            "name": "test case 2",
+            "description": "Test string manipulation functions",
+            "setup_steps": [
+                {
+                    "name": "setup_test_string",
+                    "function": "str",
+                    "input_args": [
+                        "  Hello World  "
+                    ],
+                    "expected_result": "  Hello World  ",
+                    "assertion_type": "equals"
+                }
+            ],
+            "steps": [
+                {
+                    "name": "test_upper",
+                    "function": "upper",
+                    "input_args": [
+                        "hello"
+                    ],
+                    "expected_result": "HELLO",
+                    "assertion_type": "equals"
+                },
+                {
+                    "name": "test_lower",
+                    "function": "lower",
+                    "input_args": [
+                        "WORLD"
+                    ],
+                    "expected_result": "world",
+                    "assertion_type": "equals"
+                },
+                {
+                    "name": "test_strip",
+                    "function": "strip",
+                    "input_args": [
+                        "  test  "
+                    ],
+                    "expected_result": "test",
+                    "assertion_type": "equals"
+                }
+            ],
+            "teardown_steps": [
+                {
+                    "name": "cleanup",
+                    "function": "str",
+                    "input_args": [
+                        "cleanup complete"
+                    ],
+                    "expected_result": "cleanup complete",
+                    "assertion_type": "equals"
+                }
+            ]
         }
-      ],
-      "teardown_steps": [
-        {
-          "name": "cleanup",
-          "function": "str",
-          "input_args": [
-            "cleanup complete"
-          ],
-          "expected_result": "cleanup complete",
-          "assertion_type": "equals"
-        }
-      ]
-    }
-  ]
+    ]
 }

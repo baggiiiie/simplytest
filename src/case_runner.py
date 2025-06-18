@@ -7,12 +7,12 @@ import time
 import os
 import allure
 from typing import Dict, List, Any, Optional
-from function_pool import FunctionPool
-from test_case import TestCase, TestStep
-import constants as const
+from src.functions.function_pool import FunctionPool
+from src.case_helpers import TestCase, TestStep
+import src.constants as const
 
 
-class TestRunner:
+class CaseRunner:
     """Main test runner for executing JSON-defined test cases"""
 
     def __init__(self, function_pool: Optional[FunctionPool] = None):
@@ -85,7 +85,7 @@ class TestRunner:
             assertion_type=step_data.get(const.ASSERTION, "equals"),
             retry_count=step_data.get(const.RETRY_COUNT, 0),
             retry_delay=step_data.get(const.RETRY_DELAY, 1.0),
-            description=step_data.get(const.DESCRIPTION),
+            description=step_data.get(const.DESCRIPTION, ""),
         )
 
     def execute_test_case(self, test_case: TestCase) -> Dict[str, Any]:
@@ -276,21 +276,4 @@ class TestRunner:
             raise ValueError(f"Unknown assertion type: {assertion_type}")
 
 
-# Usage example
-if __name__ == "__main__":
-    # Create function pool and test runner
-    pool = FunctionPool()
-    runner = TestRunner(pool)
-
-    # Load and execute test cases
-    print("Loading and executing basic operations...")
-    basic_cases = runner.load_test_cases_from_json("tests/simpletest.json")
-    for test_case in basic_cases:
-        result = runner.execute_test_case(test_case)
-        print(f"Result: {result['status']}")
-
-    print("\nLoading and executing string operations...")
-    string_cases = runner.load_test_cases_from_json("tests/simpletest2.json")
-    for test_case in string_cases:
-        result = runner.execute_test_case(test_case)
-        print(f"Result: {result['status']}")
+case_runner = CaseRunner()

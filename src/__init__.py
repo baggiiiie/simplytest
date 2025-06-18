@@ -2,11 +2,11 @@
 JSON-based pytest test framework
 """
 
-from function_pool import FunctionPool
-from test_runner import TestRunner, TestCase, TestStep
-import constants as const
+from src.functions.function_pool import FunctionPool
+from src.case_runner import CaseRunner, TestCase, TestStep
+import src.constants as const
 
-__all__ = ["FunctionPool", "TestRunner", "TestCase", "TestStep"]
+__all__ = ["FunctionPool", "CaseRunner", "TestCase", "TestStep"]
 
 import pytest
 
@@ -27,17 +27,17 @@ class TestJSONFramework:
         return pool
 
     @pytest.fixture
-    def test_runner(self, function_pool):
+    def case_runner(self, function_pool):
         """Create a test runner with the function pool"""
-        return TestRunner(function_pool)
+        return CaseRunner(function_pool)
 
-    def test_basic_operations(self, test_runner):
+    def test_basic_operations(self, case_runner):
         """Test that loads and executes a basic JSON test case"""
         # This would normally load from a JSON file
         # For demo purposes, we'll create the test case programmatically
 
         # You would typically call:
-        # test_cases = test_runner.load_test_cases_from_json('test_cases/basic_operations.json')
+        # test_cases = case_runner.load_test_cases_from_json('test_cases/basic_operations.json')
 
         # For this example, we'll simulate it
         json_data = {
@@ -74,17 +74,17 @@ class TestJSONFramework:
         }
 
         # Parse the test case
-        test_case = test_runner._parse_test_case(json_data["test_cases"][0])
+        test_case = case_runner._parse_test_case(json_data["test_cases"][0])
 
         # Execute the test case
-        result = test_runner.execute_test_case(test_case)
+        result = case_runner.execute_test_case(test_case)
 
         # Verify the test passed
         assert result[const.STATUS] == "PASSED"
         assert len(result["steps"]) == 3
         assert all(step["passed"] for step in result["steps"])
 
-    def test_retry_mechanism(self, test_runner):
+    def test_retry_mechanism(self, case_runner):
         """Test the retry mechanism with a failing function"""
         json_data = {
             "test_cases": [
@@ -106,13 +106,13 @@ class TestJSONFramework:
             ]
         }
 
-        test_case = test_runner._parse_test_case(json_data["test_cases"][0])
-        result = test_runner.execute_test_case(test_case)
+        test_case = case_runner._parse_test_case(json_data["test_cases"][0])
+        result = case_runner.execute_test_case(test_case)
 
         # This should pass because divide by zero returns None
         assert result[const.STATUS] == "PASSED"
 
-    def test_variable_substitution(self, test_runner):
+    def test_variable_substitution(self, case_runner):
         """Test variable substitution in test steps"""
         # Add test cases that use variables
         pass  # Implementation would test the ${variable} substitution

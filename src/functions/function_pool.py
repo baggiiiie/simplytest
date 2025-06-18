@@ -34,3 +34,6 @@ class FunctionPool:
         self.register("multiply", lambda x, y: x * y)
         self.register("divide", lambda x, y: x / y if y != 0 else None)
         self.register("sleep", time.sleep)
+
+
+function_pool = FunctionPool()
