@@ -1,6 +1,4 @@
 import pytest
-from src.case_runner import CaseRunner
-from src.functions.function_pool import function_pool
 from src.case_runner import case_runner as runner
 
 
