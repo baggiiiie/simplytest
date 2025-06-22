@@ -1,15 +1,14 @@
-"""
-Test runner for executing JSON-defined test cases
-"""
-
 import json
 import time
 import os
-import allure
 from typing import Dict, List, Any, Optional
 from src.functions.function_pool import FunctionPool
 from src.case_helpers import TestCase, TestStep
 import src.constants as const
+import logging
+from retry import retry
+import importlib
+from hamcrest import assert_that
 
 
 class CaseRunner:
@@ -91,8 +90,6 @@ class CaseRunner:
     def execute_test_case(self, test_case: TestCase) -> Dict[str, Any]:
         """Execute a single test case"""
         print(f"\n--- Executing Test Case: {test_case.name} ---")
-        if test_case.description:
-            print(f"Description: {test_case.description}")
 
         # Initialize variables for this test case
         self.variables = test_case.variables.copy() if test_case.variables else {}
@@ -110,16 +107,15 @@ class CaseRunner:
         try:
             # Execute setup steps
             if test_case.setup_steps:
-                print("Executing setup steps...")
+                logging.info("Executing setup steps...")
                 for step in test_case.setup_steps:
-                    with allure.step(step.description):
-                        step_result = self._execute_step(step)
-                        if not step_result["passed"]:
-                            result[const.STATUS] = "FAILED"
-                            result[const.ERROR] = (
-                                f"Setup step failed: {step_result[const.ERROR]}"
-                            )
-                            return result
+                    step_result = self._execute_step(step)
+                    if not step_result["passed"]:
+                        result[const.STATUS] = "FAILED"
+                        result[const.ERROR] = (
+                            f"Setup step failed: {step_result[const.ERROR]}"
+                        )
+                        return result
 
             # Execute main test steps
             for step in test_case.steps:
@@ -151,88 +147,69 @@ class CaseRunner:
         return result
 
     def _execute_step(self, step: TestStep) -> Dict[str, Any]:
-        """Execute a single test step with retry logic"""
-        print(f"  Executing step: {step.name}")
-        if step.description:
-            print(f"    Description: {step.description}")
+        """Execute a single test step with retry logic using retry package"""
+        print(f"Executing step: {step.name}")
+        if not step.description:
+            step.description = "No description provided"
+        print(f"Step description: {step.description}")
 
-        for attempt in range(step.retry_count + 1):
-            try:
-                if attempt > 0:
-                    print(f"    Retry attempt {attempt}/{step.retry_count}")
-                    time.sleep(step.retry_delay)
+        @retry(
+            exceptions=(AssertionError),  # implement custom exceptions if needed
+            tries=step.retry_count + 1,
+            delay=step.retry_delay,
+            backoff=1,
+            max_delay=None,
+            logger=None,
+        )
+        def execute_step_with_retry():
+            # Get the function to execute
+            func = self.function_pool.get_function(step.function)
 
-                # Get the function to execute
-                func = self.function_pool.get_function(step.function)
+            # Resolve variables in input arguments
+            resolved_args = self._resolve_variables(step.input_args)
+            resolved_kwargs = self._resolve_variables(step.input_kwargs)
 
-                # Resolve variables in input arguments
-                resolved_args = self._resolve_variables(step.input_args)
-                resolved_kwargs = self._resolve_variables(step.input_kwargs)
+            # Execute the function
+            actual_result = func(*resolved_args, **resolved_kwargs)
 
-                # Execute the function
-                actual_result = func(*resolved_args, **resolved_kwargs)
+            # Store result in variables if step name starts with 'var_'
+            if step.name.startswith("var_"):
+                var_name = step.name[4:]  # Remove 'var_' prefix
+                self.variables[var_name] = actual_result
 
-                # Store result in variables if step name starts with 'var_'
-                if step.name.startswith("var_"):
-                    var_name = step.name[4:]  # Remove 'var_' prefix
-                    self.variables[var_name] = actual_result
+            # Perform assertion
+            assertion_passed = self._perform_assertion(
+                actual_result, step.expected_result, step.assertion_type
+            )
 
-                # Perform assertion
-                assertion_passed = self._perform_assertion(
-                    actual_result, step.expected_result, step.assertion_type
-                )
+            if not assertion_passed:
+                error_msg = f"Assertion failed: expected {step.expected_result}, got {actual_result}"
+                raise AssertionError(error_msg)
 
-                if assertion_passed:
-                    print("Step passed")
-                    return {
-                        "name": step.name,
-                        "passed": True,
-                        "actual_result": actual_result,
-                        "expected_result": step.expected_result,
-                        "attempt": attempt + 1,
-                        "error": None,
-                    }
-                else:
-                    error_msg = f"Assertion failed: expected {step.expected_result}, got {actual_result}"
-                    if attempt < step.retry_count:
-                        print(f"    ✗ {error_msg} (will retry)")
-                        continue
-                    else:
-                        print(f"    ✗ {error_msg}")
-                        return {
-                            "name": step.name,
-                            "passed": False,
-                            "actual_result": actual_result,
-                            "expected_result": step.expected_result,
-                            "attempt": attempt + 1,
-                            "error": error_msg,
-                        }
+            return actual_result
 
-            except Exception as e:
-                error_msg = f"Function execution failed: {str(e)}"
-                if attempt < step.retry_count:
-                    print(f"{error_msg} (will retry)")
-                    continue
-                else:
-                    print(f"{error_msg}")
-                    return {
-                        "name": step.name,
-                        "passed": False,
-                        "actual_result": None,
-                        "expected_result": step.expected_result,
-                        "attempt": attempt + 1,
-                        "error": error_msg,
-                    }
-
-        # This should never be reached, but just in case
-        return {
-            "name": step.name,
-            "passed": False,
-            "actual_result": None,
-            "expected_result": step.expected_result,
-            "attempt": step.retry_count + 1,
-            "error": "Unknown error",
-        }
+        try:
+            actual_result = execute_step_with_retry()
+            print("Step passed")
+            return {
+                "name": step.name,
+                "passed": True,
+                "actual_result": actual_result,
+                "expected_result": step.expected_result,
+                "attempt": 1,  # retry package handles attempts internally
+                "error": None,
+            }
+        except Exception as e:
+            error_msg = str(e)
+            print(f"Step failed: {error_msg}")
+            return {
+                "name": step.name,
+                "passed": False,
+                "actual_result": None,
+                "expected_result": step.expected_result,
+                "attempt": step.retry_count + 1,
+                "error": error_msg,
+            }
 
     def _resolve_variables(self, obj: Any) -> Any:
         """Resolve variables in the format ${variable_name} within the object"""
@@ -248,32 +225,31 @@ class CaseRunner:
         else:
             return obj
 
-    def _perform_assertion(
-        self, actual: Any, expected: Any, assertion_type: str
-    ) -> bool:
-        """Perform assertion based on type"""
-        if assertion_type == "equals":
-            return actual == expected
-        elif assertion_type == "not_equals":
-            return actual != expected
-        elif assertion_type == "contains":
-            return expected in actual
-        elif assertion_type == "not_contains":
-            return expected not in actual
-        elif assertion_type == "greater":
-            return actual > expected
-        elif assertion_type == "less":
-            return actual < expected
-        elif assertion_type == "greater_equal":
-            return actual >= expected
-        elif assertion_type == "less_equal":
-            return actual <= expected
-        elif assertion_type == "is_none":
-            return actual is None
-        elif assertion_type == "is_not_none":
-            return actual is not None
-        else:
-            raise ValueError(f"Unknown assertion type: {assertion_type}")
+    def _perform_assertion(self, actual: Any, expected: Any, assertion_type: str):
+        def _get_matcher(matcher_name: str):
+            matcher_modules = [
+                "hamcrest.core.core",
+                "hamcrest.library.collection",
+                "hamcrest.library.number",
+                "hamcrest.library.object",
+                "hamcrest.library.text",
+                "hamcrest.library.string",
+            ]
+            for module_name in matcher_modules:
+                try:
+                    module = importlib.import_module(module_name)
+                    if hasattr(module, matcher_name):
+                        return getattr(module, matcher_name)
+                except ImportError:
+                    continue
+            raise ValueError(f'"{assertion_type}" is not a valid matcher')
+
+        matcher = _get_matcher(assertion_type.lower())
+        assert_that(
+            actual,
+            matcher(expected),
+            f"Assertion failed: {actual} does not match {expected}",
+        )
 
 
 case_runner = CaseRunner()
