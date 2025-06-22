@@ -5,8 +5,7 @@ from typing import Dict, List, Any, Optional
 from src.functions.function_pool import FunctionPool
 from src.case_helpers import TestCase, TestStep
 import src.constants as const
-import logging
-from retry import retry
+from retry.api import retry_call
 import importlib
 from hamcrest import assert_that
 
@@ -65,8 +64,8 @@ class CaseRunner:
             ]
 
         return TestCase(
-            name=case_data["name"],
-            description=case_data.get("description"),
+            name=case_data[const.NAME],
+            description=case_data.get(const.DESCRIPTION),
             steps=steps,
             setup_steps=setup_steps,
             teardown_steps=teardown_steps,
@@ -88,10 +87,7 @@ class CaseRunner:
         )
 
     def execute_test_case(self, test_case: TestCase) -> Dict[str, Any]:
-        """Execute a single test case"""
         print(f"\n--- Executing Test Case: {test_case.name} ---")
-
-        # Initialize variables for this test case
         self.variables = test_case.variables.copy() if test_case.variables else {}
 
         result = {
@@ -107,7 +103,7 @@ class CaseRunner:
         try:
             # Execute setup steps
             if test_case.setup_steps:
-                logging.info("Executing setup steps...")
+                print("Executing setup steps...")
                 for step in test_case.setup_steps:
                     step_result = self._execute_step(step)
                     if not step_result["passed"]:
@@ -147,56 +143,44 @@ class CaseRunner:
         return result
 
     def _execute_step(self, step: TestStep) -> Dict[str, Any]:
-        """Execute a single test step with retry logic using retry package"""
+        """Execute a single test step with retry logic using retry_call"""
         print(f"Executing step: {step.name}")
         if not step.description:
             step.description = "No description provided"
         print(f"Step description: {step.description}")
 
-        @retry(
-            exceptions=(AssertionError),  # implement custom exceptions if needed
-            tries=step.retry_count + 1,
-            delay=step.retry_delay,
-            backoff=1,
-            max_delay=None,
-            logger=None,
-        )
-        def execute_step_with_retry():
-            # Get the function to execute
+        def execute_step():
             func = self.function_pool.get_function(step.function)
-
-            # Resolve variables in input arguments
             resolved_args = self._resolve_variables(step.input_args)
             resolved_kwargs = self._resolve_variables(step.input_kwargs)
-
-            # Execute the function
             actual_result = func(*resolved_args, **resolved_kwargs)
 
-            # Store result in variables if step name starts with 'var_'
             if step.name.startswith("var_"):
                 var_name = step.name[4:]  # Remove 'var_' prefix
                 self.variables[var_name] = actual_result
 
-            # Perform assertion
-            assertion_passed = self._perform_assertion(
+            self._perform_assertion(
                 actual_result, step.expected_result, step.assertion_type
             )
-
-            if not assertion_passed:
-                error_msg = f"Assertion failed: expected {step.expected_result}, got {actual_result}"
-                raise AssertionError(error_msg)
-
             return actual_result
 
         try:
-            actual_result = execute_step_with_retry()
+            actual_result = retry_call(
+                execute_step,
+                tries=step.retry_count + 1,
+                delay=step.retry_delay,
+                backoff=1,
+                max_delay=None,
+                exceptions=(AssertionError,),
+                logger=None,
+            )
             print("Step passed")
             return {
                 "name": step.name,
                 "passed": True,
                 "actual_result": actual_result,
                 "expected_result": step.expected_result,
-                "attempt": 1,  # retry package handles attempts internally
+                "attempt": 1,  # retry_call handles attempts internally
                 "error": None,
             }
         except Exception as e:
