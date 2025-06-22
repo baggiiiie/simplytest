@@ -8,11 +8,12 @@ import src.constants as const
 from retry.api import retry_call
 import importlib
 from hamcrest import assert_that
+from src.utils.allure_utils import allure_step, allure_func
+from src.utils.logger import logger
+import allure
 
 
 class CaseRunner:
-    """Main test runner for executing JSON-defined test cases"""
-
     def __init__(self, function_pool: Optional[FunctionPool] = None):
         self.function_pool = function_pool or FunctionPool()
         self.test_results = []
@@ -21,77 +22,61 @@ class CaseRunner:
         self._load_env_var()
 
     def _load_env_var(self):
-        self.ctx["env_var"] = os.environ
+        # self.ctx["env_var"] = os.environ
+        return None
 
     def load_test_cases_from_json(self, json_path: str) -> List[TestCase]:
-        """Load test cases from JSON file"""
         with open(json_path, "r") as f:
-            data = json.load(f)
+            json_data = json.load(f)
 
-        test_cases = []
-        for case_data in data.get("test_cases", []):
-            test_case = self._parse_test_case(case_data)
-            test_cases.append(test_case)
+        test_cases = json_data.get(const.TEST_CASES, [])
+        if not test_cases:
+            raise ValueError(f"no test cases found in {json_path}")
+        parsed_tests = [self._parse_test_case(case_data) for case_data in test_cases]
+        return parsed_tests
 
-        return test_cases
+    def _parse_test_case(self, test_case: Dict) -> TestCase:
+        steps = test_case.get(const.STEPS, [])
+        if not steps:
+            raise ValueError("no test steps found")
+        parsed_steps = [self._parse_step(step) for step in steps]
 
-    def _parse_test_case(self, case_data: Dict) -> TestCase:
-        """Parse a single test case from JSON data"""
-        steps = []
-        for step_data in case_data.get(const.STEPS, []):
-            step = TestStep(
-                name=step_data[const.NAME],
-                function=step_data[const.FUNCTION],
-                input_args=step_data.get(const.INPUT_ARGS, []),
-                input_kwargs=step_data.get(const.INPUT_KWARGS, {}),
-                expected_result=step_data.get(const.EXPECTED),
-                assertion_type=step_data.get(const.ASSERTION, "equals"),
-                retry_count=step_data.get(const.RETRY_COUNT, 0),
-                retry_delay=step_data.get(const.RETRY_DELAY, 1.0),
-                description=step_data.get(const.DESCRIPTION),
-            )
-            steps.append(step)
+        parsed_setup = [
+            self._parse_step(step) for step in test_case.get(const.SETUP_STEPS, [])
+        ]
 
-        # Parse setup and teardown steps if they exist
-        setup_steps = None
-        if "setup_steps" in case_data:
-            setup_steps = [self._parse_step(step) for step in case_data["setup_steps"]]
-
-        teardown_steps = None
-        if "teardown_steps" in case_data:
-            teardown_steps = [
-                self._parse_step(step) for step in case_data["teardown_steps"]
-            ]
+        parsed_teardown = [
+            self._parse_step(step) for step in test_case.get(const.TEARDOWN_STEPS, [])
+        ]
 
         return TestCase(
-            name=case_data[const.NAME],
-            description=case_data.get(const.DESCRIPTION),
-            steps=steps,
-            setup_steps=setup_steps,
-            teardown_steps=teardown_steps,
-            variables=case_data.get("variables", {}),
+            description=test_case.get(const.DESCRIPTION),
+            steps=parsed_steps,
+            setup_steps=parsed_setup,
+            teardown_steps=parsed_teardown,
+            variables=test_case.get(const.VARIABLES, {}),
         )
 
     def _parse_step(self, step_data: Dict) -> TestStep:
-        """Parse a single test step from JSON data"""
         return TestStep(
-            name=step_data[const.NAME],
             function=step_data[const.FUNCTION],
             input_args=step_data.get(const.INPUT_ARGS, []),
             input_kwargs=step_data.get(const.INPUT_KWARGS, {}),
-            expected_result=step_data.get(const.EXPECTED),
-            assertion_type=step_data.get(const.ASSERTION, "equals"),
-            retry_count=step_data.get(const.RETRY_COUNT, 0),
-            retry_delay=step_data.get(const.RETRY_DELAY, 1.0),
-            description=step_data.get(const.DESCRIPTION, ""),
+            expected_result=step_data.get(const.EXPECTED_RESULT),
+            assertion_type=step_data.get(const.ASSERTION_TYPE, "equal_to"),
+            retry_count=step_data.get(const.RETRY_COUNT, 3),
+            retry_delay=step_data.get(const.RETRY_DELAY, 1),
+            description=step_data.get(
+                const.DESCRIPTION, "No step description provided"
+            ),
         )
 
     def execute_test_case(self, test_case: TestCase) -> Dict[str, Any]:
-        print(f"\n--- Executing Test Case: {test_case.name} ---")
+        print(f"\n--- Executing Test Case: {test_case.description} ---")
         self.variables = test_case.variables.copy() if test_case.variables else {}
 
         result = {
-            const.NAME: test_case.name,
+            const.NAME: test_case.description,
             const.STATUS: "PASSED",
             const.STEPS: [],
             const.ERROR: None,
@@ -101,99 +86,113 @@ class CaseRunner:
         start_time = time.time()
 
         try:
-            # Execute setup steps
-            if test_case.setup_steps:
-                print("Executing setup steps...")
-                for step in test_case.setup_steps:
-                    step_result = self._execute_step(step)
-                    if not step_result["passed"]:
-                        result[const.STATUS] = "FAILED"
-                        result[const.ERROR] = (
-                            f"Setup step failed: {step_result[const.ERROR]}"
-                        )
-                        return result
-
-            # Execute main test steps
             for step in test_case.steps:
-                step_result = self._execute_step(step)
+                step_result = self.execute_step(step)
                 result["steps"].append(step_result)
 
                 if not step_result["passed"]:
                     result[const.STATUS] = "FAILED"
                     result["error"] = step_result["error"]
                     break
-
-            # Execute teardown steps (always run, even if test failed)
-            if test_case.teardown_steps:
-                print("Executing teardown steps...")
-                for step in test_case.teardown_steps:
-                    teardown_result = self._execute_step(step)
-                    if not teardown_result["passed"]:
-                        print(
-                            f"Warning: Teardown step failed: {teardown_result['error']}"
-                        )
-
         except Exception as e:
-            result[const.STATUS] = "ERROR"
-            result["error"] = str(e)
-
+            raise e
         finally:
-            result["execution_time"] = time.time() - start_time
+            # teardown
+            print("Executing teardown steps...")
+            print("test done")
+            print(self.ctx)
+
+        # try:
+        #     # Execute setup steps
+        #     if test_case.setup_steps:
+        #         print("Executing setup steps...")
+        #         for step in test_case.setup_steps:
+        #             step_result = self._execute_step(step)
+        #             if not step_result["passed"]:
+        #                 result[const.STATUS] = "FAILED"
+        #                 result[const.ERROR] = (
+        #                     f"Setup step failed: {step_result[const.ERROR]}"
+        #                 )
+        #                 return result
+        #
+        #     # Execute main test steps
+        #     for step in test_case.steps:
+        #         step_result = self._execute_step(step)
+        #         result["steps"].append(step_result)
+        #
+        #         if not step_result["passed"]:
+        #             result[const.STATUS] = "FAILED"
+        #             result["error"] = step_result["error"]
+        #             break
+        #
+        #     # Execute teardown steps (always run, even if test failed)
+        #     if test_case.teardown_steps:
+        #         print("Executing teardown steps...")
+        #         for step in test_case.teardown_steps:
+        #             teardown_result = self._execute_step(step)
+        #             if not teardown_result["passed"]:
+        #                 print(
+        #                     f"Warning: Teardown step failed: {teardown_result['error']}"
+        #                 )
+        #
+        # except Exception as e:
+        #     result[const.STATUS] = "ERROR"
+        #     result["error"] = str(e)
+        #
+        # finally:
+        #     result["execution_time"] = time.time() - start_time
+        #     print("test finished")
+        #     print(self.ctx)
 
         return result
 
-    def _execute_step(self, step: TestStep) -> Dict[str, Any]:
-        """Execute a single test step with retry logic using retry_call"""
-        print(f"Executing step: {step.name}")
-        if not step.description:
-            step.description = "No description provided"
-        print(f"Step description: {step.description}")
+    def execute_step(self, step: TestStep) -> Dict[str, Any]:
+        print(f"Executing step: {step.description}")
 
-        def execute_step():
-            func = self.function_pool.get_function(step.function)
-            resolved_args = self._resolve_variables(step.input_args)
-            resolved_kwargs = self._resolve_variables(step.input_kwargs)
-            actual_result = func(*resolved_args, **resolved_kwargs)
+        func_to_call = self.function_pool.get_function(step.function)
+        resolved_args = self._resolve_variables(step.input_args)
+        resolved_kwargs = self._resolve_variables(step.input_kwargs)
 
-            if step.name.startswith("var_"):
-                var_name = step.name[4:]  # Remove 'var_' prefix
-                self.variables[var_name] = actual_result
-
+        @allure_step(step.description)
+        def step_func_call():
+            print(f"Calling function: {step.function}")
+            actual_result = func_to_call(*resolved_args, **resolved_kwargs)
+            # if step.name.startswith("var_"):
+            #     var_name = step.name[4:]  # Remove 'var_' prefix
+            #     self.variables[var_name] = actual_result
+            allure_attach = {
+                "actual": actual_result,
+                "expected": step.expected_result,
+                "assertion_type": step.assertion_type,
+            }
+            allure.attach(
+                name="assertion_result",
+                body=json.dumps(allure_attach, indent=2),
+                attachment_type=allure.attachment_type.JSON,
+            )
             self._perform_assertion(
                 actual_result, step.expected_result, step.assertion_type
             )
             return actual_result
 
-        try:
-            actual_result = retry_call(
-                execute_step,
-                tries=step.retry_count + 1,
-                delay=step.retry_delay,
-                backoff=1,
-                max_delay=None,
-                exceptions=(AssertionError,),
-                logger=None,
-            )
-            print("Step passed")
-            return {
-                "name": step.name,
-                "passed": True,
-                "actual_result": actual_result,
-                "expected_result": step.expected_result,
-                "attempt": 1,  # retry_call handles attempts internally
-                "error": None,
-            }
-        except Exception as e:
-            error_msg = str(e)
-            print(f"Step failed: {error_msg}")
-            return {
-                "name": step.name,
-                "passed": False,
-                "actual_result": None,
-                "expected_result": step.expected_result,
-                "attempt": step.retry_count + 1,
-                "error": error_msg,
-            }
+        actual_result = retry_call(
+            step_func_call,
+            tries=step.retry_count + 1,
+            delay=step.retry_delay,
+            backoff=1,
+            max_delay=None,
+            exceptions=(AssertionError,),
+            logger=logger,
+        )
+        print("Step passed")
+        return {
+            "name": step.description,
+            "passed": True,
+            "actual_result": actual_result,
+            "expected_result": step.expected_result,
+            "attempt": step.retry_count + 1,
+            "error": None,
+        }
 
     def _resolve_variables(self, obj: Any) -> Any:
         """Resolve variables in the format ${variable_name} within the object"""
