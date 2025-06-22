@@ -1,4 +1,4 @@
-from utils.allure_utils import allure_step
+from src.utils.allure_utils import allure_step
 
 
 @allure_step

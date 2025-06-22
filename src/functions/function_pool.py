@@ -4,6 +4,8 @@ Function pool containing all available functions for test execution
 
 import time
 from typing import List, Callable
+import src.functions.simple_funcs as funcs
+import inspect
 
 
 class FunctionPool:
@@ -34,6 +36,8 @@ class FunctionPool:
         self.register("multiply", lambda x, y: x * y)
         self.register("divide", lambda x, y: x / y if y != 0 else None)
         self.register("sleep", time.sleep)
+        for name, func in inspect.getmembers(funcs, inspect.isfunction):
+            self.register(name, func)
 
 
 function_pool = FunctionPool()
