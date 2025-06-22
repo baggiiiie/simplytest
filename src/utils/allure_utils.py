@@ -17,7 +17,7 @@ def allure_step(message):
     return wrapper
 
 
-def allure_func(func, message):
+def allure_func(func):
     """
     Decorator that wraps a function in an Allure step using its docstring
     as the step description. Supports formatting with args/kwargs.
@@ -33,25 +33,27 @@ def allure_func(func, message):
         doc = func.__doc__ or "No description"
         try:
             func_description = doc.format(**context)
-            with allure.step(f"{message}: {func_description}"):
-                logging.info(f"STEP: {func_description}")
-                print(f"STEP: {func_description}")
-                allure.attach(
-                    body=json.dumps(context, indent=2),
-                    name="func_input",
-                    attachment_type="application/json",
-                )
-                res = func(*args, **kwargs)
-                allure.attach(
-                    body=json.dumps(res, indent=2),
-                    name="func_input",
-                    attachment_type="application/json",
-                )
-                return res
 
         except Exception as e:
-            raise ValueError(
+            logging.error(
                 f"Error formatting docstring: {e}\nDocstring: {doc}\nContext: {context}"
-            ) from e
+            )
+            func_description = doc
+
+        with allure.step(func_description):
+            logging.info(f"STEP: {func_description}")
+            print(f"STEP: {func_description}")
+            allure.attach(
+                body=json.dumps(context, indent=2),
+                name="func_input",
+                attachment_type="application/json",
+            )
+            res = func(*args, **kwargs)
+            allure.attach(
+                body=json.dumps(res, indent=2),
+                name="func_input",
+                attachment_type="application/json",
+            )
+            return res
 
     return wrapper
