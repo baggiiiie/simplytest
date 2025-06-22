@@ -1,5 +1,7 @@
 import allure
 from functools import wraps
+import logging
+import json
 
 
 def allure_step(func):
@@ -18,13 +20,25 @@ def allure_step(func):
         doc = func.__doc__ or "No description"
         try:
             description = doc.format(**context)
+            logging.info(f"STEP: {description}")
+            print(f"STEP: {description}")
+            with allure.step(description):
+                allure.attach(
+                    body=json.dumps(context),
+                    name="func_input",
+                    attachment_type="application/json",
+                )
+                res = func(*args, **kwargs)
+                allure.attach(
+                    body=json.dumps(res),
+                    name="func_input",
+                    attachment_type="application/json",
+                )
+                return res
+
         except Exception as e:
             raise ValueError(
                 f"Error formatting docstring: {e}\nDocstring: {doc}\nContext: {context}"
             ) from e
-
-        print(f"STEP: {description}")
-        with allure.step(description):
-            return func(*args, **kwargs)
 
     return wrapper
