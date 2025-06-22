@@ -100,7 +100,11 @@ class CaseRunner:
             # teardown
             print("Executing teardown steps...")
             print("test done")
-            print(self.ctx)
+            allure.attach(
+                body=json.dumps(self.ctx, indent=2),
+                attachment_type=allure.attachment_type.JSON,
+                name="context",
+            )
 
         # try:
         #     # Execute setup steps
