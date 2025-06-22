@@ -1,7 +1,7 @@
-from src.utils.allure_utils import allure_step
+from src.utils.allure_utils import allure_func
 
 
-@allure_step
+# @allure_func
 def ping():
     """
     This is simple function ping
@@ -9,7 +9,7 @@ def ping():
     return "pong"
 
 
-@allure_step
+# @allure_func
 def int_add(*args):
     """
     Adding integers: {args}
