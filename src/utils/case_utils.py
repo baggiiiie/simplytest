@@ -17,6 +17,7 @@ class TestStep:
     description: str = "No step description provided"
     result: Optional[Dict] = None
     save_result_to: str = ""
+    expected_key: str = ""
 
 
 @dataclass
@@ -47,6 +48,7 @@ def _parse_step(step_data: Dict) -> TestStep:
         retry_delay=step_data.get(const.RETRY_DELAY, 1),
         description=step_data.get(const.DESCRIPTION, "No step description provided"),
         save_result_to=step_data.get(const.SAVE_RESULT_TO, ""),
+        expected_key=step_data.get("expected_key", ""),
     )
 
 

@@ -12,6 +12,7 @@ from src.utils.allure_utils import allure_step, allure_func
 from src.utils.logger import logger
 import allure
 from dataclasses import asdict
+import jmespath
 
 
 class CaseRunner:
@@ -100,7 +101,11 @@ class CaseRunner:
                 body=json.dumps(allure_attach, indent=2),
                 attachment_type=allure.attachment_type.JSON,
             )
-            self._perform_assertion(func_res, step.expected_result, step.assertion_type)
+            if step.expected_key:
+                actual = jmespath.search(step.expected_key, func_res)
+            else:
+                actual = func_res
+            self._perform_assertion(actual, step.expected_result, step.assertion_type)
             return func_res
 
         actual_result = retry_call(
