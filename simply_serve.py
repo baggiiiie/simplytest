@@ -9,11 +9,11 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Content-type", "text/html")
             self.end_headers()
             self.wfile.write(b"<h1>Hello World!</h1>")
-        elif self.path == "/api/status":
+        elif self.path == "/api/health":
             self.send_response(200)
             self.send_header("Content-type", "application/json")
             self.end_headers()
-            response = {"status": "ok", "message": "Server is running"}
+            response = {"health": "healthy", "message": "Server is running"}
             self.wfile.write(json.dumps(response).encode())
         else:
             self.send_response(404)

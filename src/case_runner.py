@@ -18,7 +18,6 @@ class CaseRunner:
     def __init__(self, function_pool: Optional[FunctionPool] = None):
         self.function_pool = function_pool or FunctionPool()
         self.test_results = []
-        self.variables = {}
         self.current_step = {}
         # self._load_env_var()
 
@@ -30,7 +29,6 @@ class CaseRunner:
         self.ctx = test_case
         self.ctx.variables = test_case.variables or {}
         print(f"\n--- Executing Test Case: {test_case.description} ---")
-        self.variables = test_case.variables.copy() if test_case.variables else {}
 
         result = {
             const.STATUS: "PASSED",
