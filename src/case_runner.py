@@ -39,8 +39,9 @@ class CaseRunner:
         }
 
         try:
-            for step in test_case.steps:
+            for i, step in enumerate(test_case.steps):
                 start_time = time.time()
+                step.description = f"Step {i + 1}: {step.description}"
                 func_return = self.execute_test_step(step)
                 end_time = time.time()
                 step.result = {
@@ -68,7 +69,7 @@ class CaseRunner:
         step.input_args = self._resolve_variables(step.input_args)
         step.input_kwargs = self._resolve_variables(step.input_kwargs)
 
-        @allure_step(f"{step.description}: Calling function {step.function}")
+        @allure_step(f"{step.description} - Calling function `{step.function}`")
         def step_func_call():
             allure.attach(
                 name="Function Input",
