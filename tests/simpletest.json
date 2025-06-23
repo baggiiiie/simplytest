@@ -6,33 +6,45 @@
     "test_cases": [
         {
             "description": "Test random funcs",
+            "variables": {
+                "base_number": 10,
+                "increment": 5
+            },
             "steps": [
                 {
                     "description": "Add two numbers",
                     "function": "int_add",
                     "input_args": [
-                        1,
+                        "${base_number}",
                         2
                     ],
-                    "expected_result": 3,
+                    "expected_result": 12,
                     "assertion_type": "equal_to",
-                    "save_result_to": "step_1_res"
+                    "save_result_to": "res_1"
                 },
                 {
-                    "description": "Send ping",
+                    "description": "Internal helper: send ping",
                     "function": "ping",
                     "expected_result": "pong",
                     "assertion_type": "equal_to"
                 },
                 {
+                    "description": "External api: send ping",
+                    "function": "edgeos_health",
+                    "expected_key": "health",
+                    "assertion_type": "equal_to",
+                    "expected_result": "healthy"
+                },
+                {
                     "description": "Add result from step 1",
                     "function": "int_add",
                     "input_args": [
-                        "${step_1_res}",
+                        "${res_1}",
                         2
                     ],
-                    "expected_result": 3,
-                    "assertion_type": "equal_to"
+                    "retry_count": 5,
+                    "assertion_type": "greater_than",
+                    "expected_result": 3
                 }
             ]
         }

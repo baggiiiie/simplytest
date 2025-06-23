@@ -1,47 +1,46 @@
 {
-  "test_cases": [
-    {
-      "name": "Basic Math Operations",
-      "description": "Test basic arithmetic functions",
-      "variables": {
-        "base_number": 10,
-        "increment": 5
-      },
-      "steps": [
+    "test_cases": [
         {
-          "name": "test_addition",
-          "function": "add",
-          "input_args": [
-            10,
-            5
-          ],
-          "expected_result": 15,
-          "assertion_type": "equals",
-          "description": "Test basic addition"
-        },
-        {
-          "name": "test_subtraction",
-          "function": "subtract",
-          "input_args": [
-            10,
-            5
-          ],
-          "expected_result": 5,
-          "assertion_type": "equals",
-          "retry_count": 1,
-          "retry_delay": 0.5
-        },
-        {
-          "name": "var_multiply_result",
-          "function": "multiply",
-          "input_args": [
-            10,
-            5
-          ],
-          "expected_result": 50,
-          "assertion_type": "equals"
+            "description": "health check and function",
+            "variables": {
+                "base_number": 10,
+                "increment": 5
+            },
+            "steps": [
+                {
+                    "name": "test_addition",
+                    "function": "add",
+                    "input_args": [
+                        10,
+                        5
+                    ],
+                    "expected_result": 15,
+                    "assertion_type": "equals",
+                    "description": "Test basic addition"
+                },
+                {
+                    "name": "test_subtraction",
+                    "function": "subtract",
+                    "input_args": [
+                        10,
+                        5
+                    ],
+                    "expected_result": 5,
+                    "assertion_type": "equals",
+                    "retry_count": 1,
+                    "retry_delay": 0.5
+                },
+                {
+                    "name": "var_multiply_result",
+                    "function": "multiply",
+                    "input_args": [
+                        10,
+                        5
+                    ],
+                    "expected_result": 50,
+                    "assertion_type": "equals"
+                }
+            ]
         }
-      ]
-    }
-  ]
+    ]
 }
