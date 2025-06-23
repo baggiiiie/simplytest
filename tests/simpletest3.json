@@ -1,0 +1,46 @@
+{
+    "test_cases": [
+        {
+            "name": "test case 1",
+            "description": "Test string manipulation functions",
+            "setup_steps": [
+                {
+                    "name": "setup_test_string",
+                    "function": "ping",
+                    "input_args": [],
+                    "expected_result": null,
+                    "assertion_type": "equals"
+                }
+            ],
+            "steps": [
+                {
+                    "name": "add two numbers",
+                    "function": "int_add",
+                    "input_args": [
+                        1,
+                        2
+                    ],
+                    "expected_result": 3,
+                    "assertion_type": "equals"
+                },
+                {
+                    "name": "add two numbers",
+                    "function": "ping",
+                    "expected_result": "pong",
+                    "assertion_type": "equals"
+                }
+            ],
+            "teardown_steps": [
+                {
+                    "name": "cleanup",
+                    "function": "str",
+                    "input_args": [
+                        "cleanup complete"
+                    ],
+                    "expected_result": "cleanup complete",
+                    "assertion_type": "equals"
+                }
+            ]
+        }
+    ]
+}
