@@ -1,4 +1,4 @@
-from src.utils.allure_utils import allure_func
+# from src.utils.allure_utils import allure_func
 
 
 # @allure_func
