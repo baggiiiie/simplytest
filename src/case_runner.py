@@ -19,16 +19,16 @@ class CaseRunner:
         self.function_pool = function_pool or FunctionPool()
         self.test_results = []
         self.variables = {}
-        self.ctx = None
         self.current_step = {}
         # self._load_env_var()
 
     def _load_env_var(self):
-        # self.ctx["env_var"] = os.environ
+        # self.ctx.variables = os.environ
         return None
 
     def execute_test_case(self, test_case: TestCase) -> Dict[str, Any]:
         self.ctx = test_case
+        self.ctx.variables = test_case.variables or {}
         print(f"\n--- Executing Test Case: {test_case.description} ---")
         self.variables = test_case.variables.copy() if test_case.variables else {}
 
@@ -58,49 +58,6 @@ class CaseRunner:
                 attachment_type=allure.attachment_type.JSON,
                 name="context",
             )
-
-        # try:
-        #     # Execute setup steps
-        #     if test_case.setup_steps:
-        #         print("Executing setup steps...")
-        #         for step in test_case.setup_steps:
-        #             step.result = self._execute_step(step)
-        #             if not step.result["passed"]:
-        #                 result[const.STATUS] = "FAILED"
-        #                 result[const.ERROR] = (
-        #                     f"Setup step failed: {step.result[const.ERROR]}"
-        #                 )
-        #                 return result
-        #
-        #     # Execute main test steps
-        #     for step in test_case.steps:
-        #         step.result = self._execute_step(step)
-        #         result["steps"].append(step.result)
-        #
-        #         if not step.result["passed"]:
-        #             result[const.STATUS] = "FAILED"
-        #             result["error"] = step.result["error"]
-        #             break
-        #
-        #     # Execute teardown steps (always run, even if test failed)
-        #     if test_case.teardown_steps:
-        #         print("Executing teardown steps...")
-        #         for step in test_case.teardown_steps:
-        #             teardown_result = self._execute_step(step)
-        #             if not teardown_result["passed"]:
-        #                 print(
-        #                     f"Warning: Teardown step failed: {teardown_result['error']}"
-        #                 )
-        #
-        # except Exception as e:
-        #     result[const.STATUS] = "ERROR"
-        #     result["error"] = str(e)
-        #
-        # finally:
-        #     result["execution_time"] = time.time() - start_time
-        #     print("test finished")
-        #     print(self.ctx)
-
         return result
 
     def execute_test_step(self, step: TestStep) -> Dict[str, Any]:
@@ -108,31 +65,34 @@ class CaseRunner:
         print(f"Executing step: {step.description}")
 
         func_to_call = self.function_pool.get_function(step.function)
-        resolved_args = self._resolve_variables(step.input_args)
-        resolved_kwargs = self._resolve_variables(step.input_kwargs)
+        step.input_args = self._resolve_variables(step.input_args)
+        step.input_kwargs = self._resolve_variables(step.input_kwargs)
 
         @allure_step(f"{step.description}: Calling function {step.function}")
         def step_func_call():
             allure.attach(
                 name="Function Input",
                 body=json.dumps(
-                    {"args": resolved_args, "kwargs": resolved_kwargs},
+                    {"args": step.input_args, "kwargs": step.input_kwargs},
                     default=str,
                     indent=2,
                 ),
                 attachment_type=allure.attachment_type.JSON,
             )
-            actual_result = func_to_call(*resolved_args, **resolved_kwargs)
+            func_res = func_to_call(*step.input_args, **step.input_kwargs)
+            if step.save_result_to:
+                self.ctx.variables[step.save_result_to] = func_res
+
             allure.attach(
                 name="Function Output",
                 body=json.dumps(
-                    {"result": actual_result, "type": str(type(actual_result))},
+                    {"result": func_res, "type": str(type(func_res))},
                     indent=2,
                 ),
                 attachment_type=allure.attachment_type.JSON,
             )
             allure_attach = {
-                "actual": actual_result,
+                "actual": func_res,
                 "expected": step.expected_result,
                 "assertion_type": step.assertion_type,
             }
@@ -141,10 +101,8 @@ class CaseRunner:
                 body=json.dumps(allure_attach, indent=2),
                 attachment_type=allure.attachment_type.JSON,
             )
-            self._perform_assertion(
-                actual_result, step.expected_result, step.assertion_type
-            )
-            return actual_result
+            self._perform_assertion(func_res, step.expected_result, step.assertion_type)
+            return func_res
 
         actual_result = retry_call(
             step_func_call,
@@ -162,8 +120,13 @@ class CaseRunner:
         """Resolve variables in the format ${variable_name} within the object"""
         if isinstance(obj, str):
             # Simple variable substitution
-            for var_name, value in self.variables.items():
-                obj = obj.replace(f"${{{var_name}}}", str(value))
+            if obj.startswith("${") and obj.endswith("}"):
+                var_name = obj[2:-1]
+                var_value = self.ctx.variables.get(var_name, None)
+                if not var_value:
+                    raise ValueError(f"Variable {obj} not found in context")
+                # TODO: this replacement is not enough
+                obj = var_value
             return obj
         elif isinstance(obj, list):
             return [self._resolve_variables(item) for item in obj]

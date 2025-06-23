@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import src.utils.constants as const
 import json
 
@@ -16,16 +16,17 @@ class TestStep:
     retry_delay: float = 1.0
     description: str = "No step description provided"
     result: Optional[Dict] = None
+    save_result_to: str = ""
 
 
 @dataclass
 class TestCase:
-    description: Optional[str]
-    tag: Optional[str]
     steps: List[TestStep]
+    description: Optional[str] = None
+    tag: Optional[str] = None
     setup_steps: Optional[List[TestStep]] = None
     teardown_steps: Optional[List[TestStep]] = None
-    variables: Optional[Dict[str, Any]] = None
+    variables: Dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -45,6 +46,7 @@ def _parse_step(step_data: Dict) -> TestStep:
         retry_count=step_data.get(const.RETRY_COUNT, 3),
         retry_delay=step_data.get(const.RETRY_DELAY, 1),
         description=step_data.get(const.DESCRIPTION, "No step description provided"),
+        save_result_to=step_data.get(const.SAVE_RESULT_TO, ""),
     )
 
 
