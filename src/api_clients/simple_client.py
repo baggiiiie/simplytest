@@ -1,5 +1,6 @@
 import json
 import requests
+from requests import PreparedRequest, Request, Response
 import allure
 from typing import Dict
 import curlify
@@ -11,7 +12,7 @@ PORT = 8000
 BASE_URL = f"{PROTOCOL}://{HOST}:{PORT}"
 
 
-class HttpClient:
+class HTTPClient:
     def __init__(self, base_url=BASE_URL):
         self.base_url = base_url.rstrip("/")
         self.headers = {}
@@ -30,7 +31,12 @@ class HttpClient:
         }
         self.set_header(headers)
 
-    def _attach_allure(self, method, url, request_body, request_headers, response):
+    def _attach_allure(self, request: PreparedRequest, response: Response):
+        method = request.method or ""
+        url = request.url
+        request_headers = request.headers
+        request_body = str(request.body) or {}
+
         with allure.step(f"{method.upper()} {url}"):
             allure.attach(
                 json.dumps(dict(request_headers), indent=2),
@@ -73,8 +79,13 @@ class HttpClient:
         data = kwargs.get("json") or kwargs.get("data")
         headers = kwargs.get("headers", {})
 
-        response: requests.Response = requests.request(method, url, **kwargs)
-        self._attach_allure(method, url, data, headers, response)
+        response: Response = requests.request(
+            method,
+            url,
+            headers=self.headers,
+            **kwargs,
+        )
+        self._attach_allure(response.request, response)
         return response
 
     def get(self, endpoint, **kwargs):
@@ -92,8 +103,9 @@ class HttpClient:
     def patch(self, endpoint, **kwargs):
         return self._request("patch", endpoint, **kwargs)
 
-    def echo(self, **kwargs):
-        response = self.post("/api/echo", json=kwargs)
+    def echo(self, *args, **kwargs):
+        param = args[0] if args else kwargs
+        response = self.post("/api/echo", json=param)
         return response.json()
 
     def health_check(self):
@@ -101,4 +113,4 @@ class HttpClient:
         return response.json()
 
 
-my_client = HttpClient()
+my_client = HTTPClient()

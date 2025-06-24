@@ -30,10 +30,9 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
 
             try:
-                data = json.loads(post_data)
-                response = {"received": data, "echo": True}
-            except:
-                response = {"received": post_data.decode(), "echo": True}
+                response = json.loads(post_data)
+            except Exception:
+                response = post_data.decode()
 
             self.wfile.write(json.dumps(response).encode())
         else:
