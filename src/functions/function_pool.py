@@ -24,13 +24,6 @@ class FunctionPool:
         return list(self._functions.keys())
 
     def _register_default_functions(self):
-        self.register("add", lambda x, y: x + y)
-        self.register("subtract", lambda x, y: x - y)
-        self.register("multiply", lambda x, y: x * y)
-        self.register("divide", lambda x, y: x / y if y != 0 else None)
-        self.register("sleep", time.sleep)
-        self.register("echo", my_client.echo)
-        self.register("edgeos_health", my_client.health_check)
         for name, func in inspect.getmembers(funcs, inspect.isfunction):
             self.register(name, func)
 
