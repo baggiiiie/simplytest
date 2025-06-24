@@ -23,6 +23,17 @@
                     "save_result_to": "res_1"
                 },
                 {
+                    "description": "Add result from step 1",
+                    "function": "int_add",
+                    "input_args": [
+                        "${res_1}",
+                        2
+                    ],
+                    "retry_count": 5,
+                    "assertion_type": "greater_than",
+                    "expected_result": 3
+                },
+                {
                     "description": "Internal helper: send ping",
                     "function": "ping",
                     "expected_result": "pong",
@@ -36,15 +47,13 @@
                     "expected_result": "healthy"
                 },
                 {
-                    "description": "Add result from step 1",
-                    "function": "int_add",
+                    "description": "External api: echo",
+                    "function": "echo",
                     "input_args": [
-                        "${res_1}",
-                        2
+                        "Hello, World!"
                     ],
-                    "retry_count": 5,
-                    "assertion_type": "greater_than",
-                    "expected_result": 3
+                    "assertion_type": "equal_to",
+                    "expected_result": "Hello, World!"
                 }
             ]
         }
