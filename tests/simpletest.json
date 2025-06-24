@@ -7,8 +7,7 @@
         {
             "description": "Test random funcs",
             "variables": {
-                "base_number": 10,
-                "increment": 5
+                "base_number": 8
             },
             "steps": [
                 {
@@ -18,20 +17,19 @@
                         "${base_number}",
                         2
                     ],
-                    "expected_result": 12,
+                    "expected_result": 10,
                     "assertion_type": "equal_to",
                     "save_result_to": "res_1"
                 },
                 {
-                    "description": "Add result from step 1",
-                    "function": "int_add",
+                    "description": "Add result from step 1 to random number",
+                    "function": "add_rando",
                     "input_args": [
-                        "${res_1}",
-                        2
+                        "${res_1}"
                     ],
                     "retry_count": 5,
                     "assertion_type": "greater_than",
-                    "expected_result": 3
+                    "expected_result": 15
                 },
                 {
                     "description": "Internal helper: send ping",

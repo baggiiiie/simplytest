@@ -105,7 +105,11 @@ class CaseRunner:
                 actual = jmespath.search(step.expected_key, func_res)
             else:
                 actual = func_res
-            self._perform_assertion(actual, step.expected_result, step.assertion_type)
+            if step.expected_result:
+                self._resolve_variables(step.expected_result)
+                self._perform_assertion(
+                    actual, step.expected_result, step.assertion_type
+                )
             return func_res
 
         actual_result = retry_call(

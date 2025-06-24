@@ -1,6 +1,8 @@
 # from src.utils.allure_utils import allure_func
 from src.api_clients.simple_client import my_client
 import time
+import random
+import allure
 
 
 # @allure_func
@@ -34,3 +36,13 @@ def echo(*args, **kwargs):
 
 def edgeos_health(*args, **kwargs):
     return my_client.health_check(*args, **kwargs)
+
+
+def add_rando(*args):
+    rando = random.randint(1, 10)
+    allure.attach(
+        name="add_rando log",
+        body=f"Rando generated is: {rando}",
+        attachment_type=allure.attachment_type.TEXT,
+    )
+    return sum(args) + rando
