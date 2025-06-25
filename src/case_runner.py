@@ -28,6 +28,11 @@ class CaseRunner:
 
     def execute_test_case(self, test_case: TestCase) -> Dict[str, Any]:
         self.ctx = test_case
+        allure.attach(
+            body=json.dumps(asdict(self.ctx), indent=2),
+            attachment_type=allure.attachment_type.JSON,
+            name="Context before test execution",
+        )
         self.ctx.variables = test_case.variables or {}
         print(f"\n--- Executing Test Case: {test_case.description} ---")
 
@@ -56,7 +61,7 @@ class CaseRunner:
             allure.attach(
                 body=json.dumps(asdict(self.ctx), indent=2),
                 attachment_type=allure.attachment_type.JSON,
-                name="context",
+                name="Context after test execution",
             )
         return result
 

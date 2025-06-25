@@ -22,14 +22,14 @@
                     "save_result_to": "res_1"
                 },
                 {
-                    "description": "Add result from step 1 to random number",
+                    "description": "Add result from step 1 to random number (1-10)",
                     "function": "add_rando",
                     "input_args": [
                         "${res_1}"
                     ],
                     "retry_count": 5,
                     "assertion_type": "greater_than",
-                    "expected_result": 15
+                    "expected_result": 17
                 },
                 {
                     "description": "Internal helper: send ping",
